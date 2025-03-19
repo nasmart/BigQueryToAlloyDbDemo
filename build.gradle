@@ -1,0 +1,39 @@
+plugins {
+   id 'base'
+   id 'java'
+}
+
+group = 'com.google.db3'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'com.google.cloud:google-cloud-storage:2.49.0'
+    implementation 'com.google.cloud:google-cloud-bigquery:2.48.1'
+    implementation 'org.postgresql:postgresql:42.7.1'
+    implementation 'com.google.cloud:google-cloud-core:2.53.1'
+    implementation 'org.duckdb:duckdb_jdbc:1.2.1'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
+
+jar {
+    manifest {
+        attributes(
+                'Main-Class': 'com.google.db3.BigQueryToGcs'
+        )
+    }
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    {
+        exclude("META-INF/*.SF")
+    }
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+}
