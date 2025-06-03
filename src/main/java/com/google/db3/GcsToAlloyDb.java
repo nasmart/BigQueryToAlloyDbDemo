@@ -34,7 +34,7 @@ public class GcsToAlloyDb {
     int workerId;
 
     if (args.length != 2) {
-      System.err.println("Error: Expected exactly two arguments: 1) Number of works, 2) My worker number.");
+      System.err.println("Error: Expected exactly two arguments: 1) Number of workers, 2) My worker number.");
       return;
     }
 
