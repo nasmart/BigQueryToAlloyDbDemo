@@ -17,12 +17,12 @@ public class BigQueryToGcs {
 
   public static void main(String[] args) throws InterruptedException {
 
+    String datasetProjectId = System.getenv("BIGQUERY_PROJECT");
+    String datasetId = System.getenv("BIGQUERY_DATASET");
+    String tableId = System.getenv("BIGQUERY_TABLE");
     String bucketName = System.getenv("GCS_BUCKET");
     String prefix = System.getenv("GCS_PREFIX");
     String gcsUri = String.format("gs://%s/%s", bucketName, prefix);
-    String datasetProjectId = "bigquery-public-data";
-    String datasetId = "london_bicycles";
-    String tableId = "cycle_hire";
 
     exportDataToGCS(datasetProjectId, gcsUri, datasetId, tableId);
   }
@@ -41,21 +41,7 @@ public class BigQueryToGcs {
                   + "  format='PARQUET',"
                   + "  overwrite=true,"
                   + "  compression='SNAPPY'"
-                  + ") AS SELECT "
-                  + "     rental_id, "
-                  + "     duration, "
-                  + "     duration_ms, "
-                  + "     bike_id, "
-                  + "     bike_model, "
-                  + "     end_date, "
-                  + "     end_station_id, "
-                  + "     end_station_name, "
-                  + "     start_date, "
-                  + "     start_station_id, "
-                  + "     start_station_name, "
-                  + "     end_station_logical_terminal, "
-                  + "     start_station_logical_terminal, "
-                  + "     end_station_priority_id"
+                  + ") AS SELECT * "
                   + "  FROM %s.%s.%s",
               gcsUri, datasetProjectId, datasetId, tableId);
 
