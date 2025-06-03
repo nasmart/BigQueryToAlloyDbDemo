@@ -40,6 +40,9 @@ export GCS_SECRET='<REPLACE WITH GCS BUCKET SECRET>'
 It may be necessary to set `GOOGLE_CLOUD_PROJECT` to control the project used
 by the BigQuery job.
 
+Note that you can obtain `GCS_KEY_ID` and `GCS_SECRET` values from the Google
+Cloud Console Cloud Storage->Settings->Interoperability page.
+
 Copy from the public BigQuery dataset to Google Cloud Storage using:
 
 ```
