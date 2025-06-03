@@ -18,12 +18,12 @@ public class GcsToAlloyDb {
     String bucketName = System.getenv("GCS_BUCKET");
     String prefix = System.getenv("GCS_PREFIX");
     String gcsUri = String.format("gs://%s/%s", bucketName, prefix);
-    String tableId = "cycle_hire";
 
     String alloyDbIp = System.getenv("ALLOYDB_IP");
     String alloyDbPortStr = System.getenv("ALLOYDB_PORT");
     String alloyDbDatabase = System.getenv("ALLOYDB_DATABASE");
     String alloyDbSchema = System.getenv("ALLOYDB_SCHEMA");
+    String alloyDbTableId = System.getenv("ALLOYDB_TABLE");
     String alloyDbUser = System.getenv("ALLOYDB_USER");
     String alloyDbPassword = System.getenv("ALLOYDB_PASSWORD");
 
@@ -92,7 +92,7 @@ public class GcsToAlloyDb {
           String file = String.format("%s/%012d.parquet", gcsUri, i);
           statement.execute(
               String.format(
-                  "COPY alloydb.%s.%s FROM '%s' (FORMAT parquet)", alloyDbSchema, tableId, file));
+                  "COPY alloydb.%s.%s FROM '%s' (FORMAT parquet)", alloyDbSchema, alloyDbTableId, file));
           System.out.println(String.format("Loaded %s to AlloyDB.", file));
         }
       }

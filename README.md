@@ -21,12 +21,16 @@ Build the JAR using: `./gradlew build`
 Set the following environment variables:
 
 ```
+export BIGQUERY_PROJECT='bigquery-public-data'
+export BIGQUERY_DATASET='london_bicycles'
+export BIGQUERY_TABLE='cycle_hire'
 export GCS_BUCKET='<REPLACE WITH GCS BUCKET NAME>'
 export GCS_PREFIX='<REPLACE WITH THE PATH WITHIN THE BUCKET>'
 export ALLOYDB_IP='<REPLACE WITH ALLOYDB IP ADDRESS'
 export ALLOYDB_PORT='<REPLACE WITH ALLOYDB PORT>'
 export ALLOYDB_DATABASE='<REPLACE WITH ALLOYDB DATABASE NAME>'
 export ALLOYDB_SCHEMA='<REPLACE WITH ALLOYDB SCHEMA>'
+export ALLOYDB_TABLE='<REPLACE WITH ALLOYDB TABLE NAME>'
 export ALLOYDB_USER='<REPLACE WITH ALLOYDB USER>'
 export ALLOYDB_PASSWORD='<REPLACE WITH ALLOYDB PASSWORD>'
 export GCS_KEY_ID='<REPLACE WITH GCS BUCKET KEY ID>'
@@ -35,6 +39,9 @@ export GCS_SECRET='<REPLACE WITH GCS BUCKET SECRET>'
 
 It may be necessary to set `GOOGLE_CLOUD_PROJECT` to control the project used
 by the BigQuery job.
+
+Note that you can obtain `GCS_KEY_ID` and `GCS_SECRET` values from the Google
+Cloud Console Cloud Storage->Settings->Interoperability page.
 
 Copy from the public BigQuery dataset to Google Cloud Storage using:
 
