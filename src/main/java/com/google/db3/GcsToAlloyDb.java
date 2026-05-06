@@ -71,13 +71,18 @@ public class GcsToAlloyDb {
       statement.execute(
           String.format(
               "CREATE SECRET alloydb (TYPE postgres, HOST '%s', PORT %d, DATABASE %s, USER '%s', PASSWORD '%s')",
-              alloyDbIp, alloyDbPort, alloyDbDatabase, alloyDbUser, alloyDbPassword));
+              alloyDbIp, alloyDbPort, alloyDbDatabase, alloyDbUser, alloyDbPassword.replace("'", "''")));
       System.out.println("AlloyDB secret created.");
+
+      // Load httpfs extension
+      statement.execute("INSTALL httpfs;");
+      statement.execute("LOAD httpfs;");
+      System.out.println("httpfs extension installed and loaded.");
 
       // Create a Google Cloud Storage secret
       statement.execute(
           String.format(
-              "CREATE SECRET gcs (TYPE gcs, KEY_ID '%s', SECRET '%s')", gcsKeyId, gcsSecret));
+              "CREATE SECRET gcs (TYPE gcs, KEY_ID '%s', SECRET '%s')", gcsKeyId, gcsSecret.replace("'", "''")));
       System.out.println("Google Cloud Storage secret created.");
 
       // Connect to AlloyDB
