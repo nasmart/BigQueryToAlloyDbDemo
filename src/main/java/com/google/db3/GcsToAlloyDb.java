@@ -87,7 +87,7 @@ public class GcsToAlloyDb {
       int totalFiles = countFiles(bucketName, prefix + "/");
 
       // Copy for Google Cloud Storage to AlloyDB
-      for (int i = 0; i < totalFiles - 1; i++) {
+      for (int i = 0; i <= totalFiles - 1; i++) {
         if (i % totalWorkers == workerId) {
           String file = String.format("%s/%012d.parquet", gcsUri, i);
           statement.execute(
