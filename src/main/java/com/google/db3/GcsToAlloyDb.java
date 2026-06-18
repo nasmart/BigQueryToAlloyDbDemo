@@ -7,6 +7,7 @@ import com.google.cloud.storage.StorageException;
 import com.google.cloud.storage.StorageOptions;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
 
@@ -68,16 +69,24 @@ public class GcsToAlloyDb {
       System.out.println("Postgres extension installed and loaded.");
 
       // Create a postgres secret
-      statement.execute(
-          String.format(
-              "CREATE SECRET alloydb (TYPE postgres, HOST '%s', PORT %d, DATABASE '%s', USER '%s', PASSWORD '%s')",
-              escapeSql(alloyDbIp), alloyDbPort, escapeSql(alloyDbDatabase), escapeSql(alloyDbUser), escapeSql(alloyDbPassword)));
+      try (PreparedStatement alloyDbSecretStmt = connection.prepareStatement(
+          "CREATE SECRET alloydb (TYPE postgres, HOST ?, PORT ?, DATABASE ?, USER ?, PASSWORD ?)")) {
+        alloyDbSecretStmt.setString(1, alloyDbIp);
+        alloyDbSecretStmt.setInt(2, alloyDbPort);
+        alloyDbSecretStmt.setString(3, alloyDbDatabase);
+        alloyDbSecretStmt.setString(4, alloyDbUser);
+        alloyDbSecretStmt.setString(5, alloyDbPassword);
+        alloyDbSecretStmt.execute();
+      }
       System.out.println("AlloyDB secret created.");
 
       // Create a Google Cloud Storage secret
-      statement.execute(
-          String.format(
-              "CREATE SECRET gcs (TYPE gcs, KEY_ID '%s', SECRET '%s')", escapeSql(gcsKeyId), escapeSql(gcsSecret)));
+      try (PreparedStatement gcsSecretStmt = connection.prepareStatement(
+          "CREATE SECRET gcs (TYPE gcs, KEY_ID ?, SECRET ?)")) {
+        gcsSecretStmt.setString(1, gcsKeyId);
+        gcsSecretStmt.setString(2, gcsSecret);
+        gcsSecretStmt.execute();
+      }
       System.out.println("Google Cloud Storage secret created.");
 
       // Connect to AlloyDB
