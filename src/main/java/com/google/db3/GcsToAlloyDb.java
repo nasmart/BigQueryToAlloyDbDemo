@@ -70,14 +70,14 @@ public class GcsToAlloyDb {
       // Create a postgres secret
       statement.execute(
           String.format(
-              "CREATE SECRET alloydb (TYPE postgres, HOST '%s', PORT %d, DATABASE %s, USER '%s', PASSWORD '%s')",
-              alloyDbIp, alloyDbPort, alloyDbDatabase, alloyDbUser, alloyDbPassword));
+              "CREATE SECRET alloydb (TYPE postgres, HOST '%s', PORT %d, DATABASE '%s', USER '%s', PASSWORD '%s')",
+              escapeSql(alloyDbIp), alloyDbPort, escapeSql(alloyDbDatabase), escapeSql(alloyDbUser), escapeSql(alloyDbPassword)));
       System.out.println("AlloyDB secret created.");
 
       // Create a Google Cloud Storage secret
       statement.execute(
           String.format(
-              "CREATE SECRET gcs (TYPE gcs, KEY_ID '%s', SECRET '%s')", gcsKeyId, gcsSecret));
+              "CREATE SECRET gcs (TYPE gcs, KEY_ID '%s', SECRET '%s')", escapeSql(gcsKeyId), escapeSql(gcsSecret)));
       System.out.println("Google Cloud Storage secret created.");
 
       // Connect to AlloyDB
@@ -101,6 +101,13 @@ public class GcsToAlloyDb {
       System.err.println("Error: " + e.getMessage());
       e.printStackTrace();
     } 
+  }
+
+  private static String escapeSql(String input) {
+    if (input == null) {
+      return null;
+    }
+    return input.replace("'", "''");
   }
 
   public static int countFiles(String bucketName, String prefix) {
