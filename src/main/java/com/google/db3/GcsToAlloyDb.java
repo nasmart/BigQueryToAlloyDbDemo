@@ -7,9 +7,10 @@ import com.google.cloud.storage.StorageException;
 import com.google.cloud.storage.StorageOptions;
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.HashMap;
+import java.util.Map;
 
 /** Copy Parquet files from Google Cloud Storage to AlloyDB. */
 public class GcsToAlloyDb {
@@ -69,7 +70,7 @@ public class GcsToAlloyDb {
       System.out.println("Postgres extension installed and loaded.");
 
       // Create a postgres secret
-      try (PreparedStatement alloyDbSecretStmt = connection.prepareStatement(
+      try (SafeStatementBuilder alloyDbSecretStmt = new SafeStatementBuilder(statement,
           "CREATE SECRET alloydb (TYPE postgres, HOST ?, PORT ?, DATABASE ?, USER ?, PASSWORD ?)")) {
         alloyDbSecretStmt.setString(1, alloyDbIp);
         alloyDbSecretStmt.setInt(2, alloyDbPort);
@@ -81,7 +82,7 @@ public class GcsToAlloyDb {
       System.out.println("AlloyDB secret created.");
 
       // Create a Google Cloud Storage secret
-      try (PreparedStatement gcsSecretStmt = connection.prepareStatement(
+      try (SafeStatementBuilder gcsSecretStmt = new SafeStatementBuilder(statement,
           "CREATE SECRET gcs (TYPE gcs, KEY_ID ?, SECRET ?)")) {
         gcsSecretStmt.setString(1, gcsKeyId);
         gcsSecretStmt.setString(2, gcsSecret);
@@ -96,12 +97,12 @@ public class GcsToAlloyDb {
       int totalFiles = countFiles(bucketName, prefix + "/");
 
       // Copy for Google Cloud Storage to AlloyDB
-      for (int i = 0; i < totalFiles; i++) {
+      for (int i = 0; i < totalFiles - 1; i++) {
         if (i % totalWorkers == workerId) {
           String file = String.format("%s/%012d.parquet", gcsUri, i);
           statement.execute(
               String.format(
-                  "COPY alloydb.%s.%s FROM '%s' (FORMAT parquet)", alloyDbSchema, alloyDbTableId, file));
+                  "COPY alloydb.\"%s\".\"%s\" FROM '%s' (FORMAT parquet)", escapeSql(alloyDbSchema).replace("\"", "\"\""), escapeSql(alloyDbTableId).replace("\"", "\"\""), escapeSql(file)));
           System.out.println(String.format("Loaded %s to AlloyDB.", file));
         }
       }
@@ -110,6 +111,48 @@ public class GcsToAlloyDb {
       System.err.println("Error: " + e.getMessage());
       e.printStackTrace();
     } 
+  }
+
+  private static class SafeStatementBuilder implements AutoCloseable {
+    private final Statement statement;
+    private final String template;
+    private final Map<Integer, String> parameters = new HashMap<>();
+
+    public SafeStatementBuilder(Statement statement, String template) {
+      this.statement = statement;
+      this.template = template;
+    }
+
+    public void setString(int index, String value) {
+      parameters.put(index, "'" + escapeSql(value) + "'");
+    }
+
+    public void setInt(int index, int value) {
+      parameters.put(index, String.valueOf(value));
+    }
+
+    public boolean execute() throws SQLException {
+      StringBuilder query = new StringBuilder();
+      int paramIndex = 1;
+      for (int i = 0; i < template.length(); i++) {
+        char c = template.charAt(i);
+        if (c == '?') {
+          if (!parameters.containsKey(paramIndex)) {
+            throw new SQLException("Missing parameter for index " + paramIndex);
+          }
+          query.append(parameters.get(paramIndex));
+          paramIndex++;
+        } else {
+          query.append(c);
+        }
+      }
+      return statement.execute(query.toString());
+    }
+
+    @Override
+    public void close() {
+      // Nothing to close since the wrapped statement belongs to the parent block.
+    }
   }
 
   private static String escapeSql(String input) {
