@@ -27,6 +27,20 @@ public class BigQueryToGcs {
     exportDataToGCS(datasetProjectId, gcsUri, datasetId, tableId);
   }
 
+  private static String escapeSqlString(String value) {
+    if (value == null) {
+      return null;
+    }
+    return value.replace("\\", "\\\\").replace("'", "\\'");
+  }
+
+  private static String escapeIdentifier(String value) {
+    if (value == null) {
+      return null;
+    }
+    return value.replace("\\", "\\\\").replace("`", "\\`");
+  }
+
   private static void exportDataToGCS(
       String datasetProjectId, String gcsUri, String datasetId, String tableId)
       throws InterruptedException {
@@ -42,8 +56,11 @@ public class BigQueryToGcs {
                   + "  overwrite=true,"
                   + "  compression='SNAPPY'"
                   + ") AS SELECT * "
-                  + "  FROM %s.%s.%s",
-              gcsUri, datasetProjectId, datasetId, tableId);
+                  + "  FROM `%s`.`%s`.`%s`",
+              escapeSqlString(gcsUri),
+              escapeIdentifier(datasetProjectId),
+              escapeIdentifier(datasetId),
+              escapeIdentifier(tableId));
 
       QueryJobConfiguration queryConfig = QueryJobConfiguration.newBuilder(query).build();
 
