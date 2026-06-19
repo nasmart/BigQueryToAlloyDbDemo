@@ -71,13 +71,13 @@ public class GcsToAlloyDb {
       statement.execute(
           String.format(
               "CREATE SECRET alloydb (TYPE postgres, HOST '%s', PORT %d, DATABASE '%s', USER '%s', PASSWORD '%s')",
-              escapeSql(alloyDbIp), alloyDbPort, escapeSql(alloyDbDatabase), escapeSql(alloyDbUser), escapeSql(alloyDbPassword)));
+              escapeSqlString(alloyDbIp), alloyDbPort, escapeSqlString(alloyDbDatabase), escapeSqlString(alloyDbUser), escapeSqlString(alloyDbPassword)));
       System.out.println("AlloyDB secret created.");
 
       // Create a Google Cloud Storage secret
       statement.execute(
           String.format(
-              "CREATE SECRET gcs (TYPE gcs, KEY_ID '%s', SECRET '%s')", escapeSql(gcsKeyId), escapeSql(gcsSecret)));
+              "CREATE SECRET gcs (TYPE gcs, KEY_ID '%s', SECRET '%s')", escapeSqlString(gcsKeyId), escapeSqlString(gcsSecret)));
       System.out.println("Google Cloud Storage secret created.");
 
       // Connect to AlloyDB
@@ -92,7 +92,7 @@ public class GcsToAlloyDb {
           String file = String.format("%s/%012d.parquet", gcsUri, i);
           statement.execute(
               String.format(
-                  "COPY alloydb.%s.%s FROM '%s' (FORMAT parquet)", alloyDbSchema, alloyDbTableId, file));
+                  "COPY alloydb.%s.%s FROM '%s' (FORMAT parquet)", escapeIdentifier(alloyDbSchema), escapeIdentifier(alloyDbTableId), escapeSqlString(file)));
           System.out.println(String.format("Loaded %s to AlloyDB.", file));
         }
       }
@@ -103,11 +103,18 @@ public class GcsToAlloyDb {
     } 
   }
 
-  private static String escapeSql(String input) {
+  private static String escapeSqlString(String input) {
     if (input == null) {
       return null;
     }
-    return input.replace("'", "''");
+    return input.replace("\\", "\\\\").replace("'", "''");
+  }
+
+  private static String escapeIdentifier(String input) {
+    if (input == null) {
+      return null;
+    }
+    return "\"" + input.replace("\"", "\"\"") + "\"";
   }
 
   public static int countFiles(String bucketName, String prefix) {
