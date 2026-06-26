@@ -71,13 +71,13 @@ public class GcsToAlloyDb {
       statement.execute(
           String.format(
               "CREATE SECRET alloydb (TYPE postgres, HOST '%s', PORT %d, DATABASE '%s', USER '%s', PASSWORD '%s')",
-              escapeSqlString(alloyDbIp), alloyDbPort, escapeSqlString(alloyDbDatabase), escapeSqlString(alloyDbUser), escapeSqlString(alloyDbPassword)));
+              SqlUtils.escapeDuckDbSqlString(alloyDbIp), alloyDbPort, SqlUtils.escapeDuckDbSqlString(alloyDbDatabase), SqlUtils.escapeDuckDbSqlString(alloyDbUser), SqlUtils.escapeDuckDbSqlString(alloyDbPassword)));
       System.out.println("AlloyDB secret created.");
 
       // Create a Google Cloud Storage secret
       statement.execute(
           String.format(
-              "CREATE SECRET gcs (TYPE gcs, KEY_ID '%s', SECRET '%s')", escapeSqlString(gcsKeyId), escapeSqlString(gcsSecret)));
+              "CREATE SECRET gcs (TYPE gcs, KEY_ID '%s', SECRET '%s')", SqlUtils.escapeDuckDbSqlString(gcsKeyId), SqlUtils.escapeDuckDbSqlString(gcsSecret)));
       System.out.println("Google Cloud Storage secret created.");
 
       // Connect to AlloyDB
@@ -92,7 +92,7 @@ public class GcsToAlloyDb {
           String file = String.format("%s/%012d.parquet", gcsUri, i);
           statement.execute(
               String.format(
-                  "COPY alloydb.%s.%s FROM '%s' (FORMAT parquet)", escapeIdentifier(alloyDbSchema), escapeIdentifier(alloyDbTableId), escapeSqlString(file)));
+                  "COPY alloydb.%s.%s FROM '%s' (FORMAT parquet)", SqlUtils.escapeDuckDbIdentifier(alloyDbSchema), SqlUtils.escapeDuckDbIdentifier(alloyDbTableId), SqlUtils.escapeDuckDbSqlString(file)));
           System.out.println(String.format("Loaded %s to AlloyDB.", file));
         }
       }
@@ -101,20 +101,6 @@ public class GcsToAlloyDb {
       System.err.println("Error: " + e.getMessage());
       e.printStackTrace();
     } 
-  }
-
-  private static String escapeSqlString(String input) {
-    if (input == null) {
-      return null;
-    }
-    return input.replace("\\", "\\\\").replace("'", "''");
-  }
-
-  private static String escapeIdentifier(String input) {
-    if (input == null) {
-      return null;
-    }
-    return "\"" + input.replace("\"", "\"\"") + "\"";
   }
 
   public static int countFiles(String bucketName, String prefix) {
