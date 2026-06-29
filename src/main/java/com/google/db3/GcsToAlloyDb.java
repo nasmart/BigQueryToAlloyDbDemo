@@ -68,16 +68,21 @@ public class GcsToAlloyDb {
       System.out.println("Postgres extension installed and loaded.");
 
       // Create a postgres secret
-      statement.execute(
-          String.format(
-              "CREATE SECRET alloydb (TYPE postgres, HOST '%s', PORT %d, DATABASE '%s', USER '%s', PASSWORD '%s')",
-              escapeSql(alloyDbIp), alloyDbPort, escapeSql(alloyDbDatabase), escapeSql(alloyDbUser), escapeSql(alloyDbPassword)));
+      // Note: DuckDB does not support PreparedStatements parameters for DDL statements (like CREATE SECRET).
+      // We rely on explicit string escaping and concatenation to prevent SQL injection vulnerabilities.
+      String createAlloyDbSecretSql = "CREATE SECRET alloydb (TYPE postgres, HOST '" + escapeSql(alloyDbIp)
+          + "', PORT " + alloyDbPort
+          + ", DATABASE '" + escapeSql(alloyDbDatabase)
+          + "', USER '" + escapeSql(alloyDbUser)
+          + "', PASSWORD '" + escapeSql(alloyDbPassword)
+          + "')";
+      statement.execute(createAlloyDbSecretSql);
       System.out.println("AlloyDB secret created.");
 
       // Create a Google Cloud Storage secret
-      statement.execute(
-          String.format(
-              "CREATE SECRET gcs (TYPE gcs, KEY_ID '%s', SECRET '%s')", escapeSql(gcsKeyId), escapeSql(gcsSecret)));
+      // Note: As above, PreparedStatement parameters cannot be used here due to DuckDB limitations.
+      String createGcsSecretSql = "CREATE SECRET gcs (TYPE gcs, KEY_ID '" + escapeSql(gcsKeyId) + "', SECRET '" + escapeSql(gcsSecret) + "')";
+      statement.execute(createGcsSecretSql);
       System.out.println("Google Cloud Storage secret created.");
 
       // Connect to AlloyDB
