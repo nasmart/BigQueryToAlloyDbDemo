@@ -15,20 +15,20 @@ public class GcsToAlloyDb {
 
   public static void main(String[] args) throws InterruptedException {
 
-    String bucketName = Config.get("GCS_BUCKET");
-    String prefix = Config.get("GCS_PREFIX");
+    String bucketName = System.getenv("GCS_BUCKET");
+    String prefix = System.getenv("GCS_PREFIX");
     String gcsUri = String.format("gs://%s/%s", bucketName, prefix);
 
-    String alloyDbIp = Config.get("ALLOYDB_IP");
-    String alloyDbPortStr = Config.get("ALLOYDB_PORT");
-    String alloyDbDatabase = Config.get("ALLOYDB_DATABASE");
-    String alloyDbSchema = Config.get("ALLOYDB_SCHEMA");
-    String alloyDbTableId = Config.get("ALLOYDB_TABLE");
-    String alloyDbUser = Config.get("ALLOYDB_USER");
-    String alloyDbPassword = Config.get("ALLOYDB_PASSWORD");
+    String alloyDbIp = System.getenv("ALLOYDB_IP");
+    String alloyDbPortStr = System.getenv("ALLOYDB_PORT");
+    String alloyDbDatabase = System.getenv("ALLOYDB_DATABASE");
+    String alloyDbSchema = System.getenv("ALLOYDB_SCHEMA");
+    String alloyDbTableId = System.getenv("ALLOYDB_TABLE");
+    String alloyDbUser = System.getenv("ALLOYDB_USER");
+    String alloyDbPassword = System.getenv("ALLOYDB_PASSWORD");
 
-    String gcsKeyId = Config.get("GCS_KEY_ID");
-    String gcsSecret = Config.get("GCS_SECRET");
+    String gcsKeyId = System.getenv("GCS_KEY_ID");
+    String gcsSecret = System.getenv("GCS_SECRET");
 
     int totalWorkers;
     int workerId;
@@ -68,16 +68,21 @@ public class GcsToAlloyDb {
       System.out.println("Postgres extension installed and loaded.");
 
       // Create a postgres secret
-      statement.execute(
-          String.format(
-              "CREATE SECRET alloydb (TYPE postgres, HOST '%s', PORT %d, DATABASE '%s', USER '%s', PASSWORD '%s')",
-              SqlUtils.escapeDuckDbSqlString(alloyDbIp), alloyDbPort, SqlUtils.escapeDuckDbSqlString(alloyDbDatabase), SqlUtils.escapeDuckDbSqlString(alloyDbUser), SqlUtils.escapeDuckDbSqlString(alloyDbPassword)));
+      // Note: DuckDB does not support PreparedStatements parameters for DDL statements (like CREATE SECRET).
+      // We rely on explicit string escaping and concatenation to prevent SQL injection vulnerabilities.
+      String createAlloyDbSecretSql = "CREATE SECRET alloydb (TYPE postgres, HOST '" + escapeSql(alloyDbIp)
+          + "', PORT " + alloyDbPort
+          + ", DATABASE '" + escapeSql(alloyDbDatabase)
+          + "', USER '" + escapeSql(alloyDbUser)
+          + "', PASSWORD '" + escapeSql(alloyDbPassword)
+          + "')";
+      statement.execute(createAlloyDbSecretSql);
       System.out.println("AlloyDB secret created.");
 
       // Create a Google Cloud Storage secret
-      statement.execute(
-          String.format(
-              "CREATE SECRET gcs (TYPE gcs, KEY_ID '%s', SECRET '%s')", SqlUtils.escapeDuckDbSqlString(gcsKeyId), SqlUtils.escapeDuckDbSqlString(gcsSecret)));
+      // Note: As above, PreparedStatement parameters cannot be used here due to DuckDB limitations.
+      String createGcsSecretSql = "CREATE SECRET gcs (TYPE gcs, KEY_ID '" + escapeSql(gcsKeyId) + "', SECRET '" + escapeSql(gcsSecret) + "')";
+      statement.execute(createGcsSecretSql);
       System.out.println("Google Cloud Storage secret created.");
 
       // Connect to AlloyDB
@@ -87,12 +92,12 @@ public class GcsToAlloyDb {
       int totalFiles = countFiles(bucketName, prefix + "/");
 
       // Copy for Google Cloud Storage to AlloyDB
-      for (int i = 0; i < totalFiles; i++) {
+      for (int i = 0; i < totalFiles - 1; i++) {
         if (i % totalWorkers == workerId) {
           String file = String.format("%s/%012d.parquet", gcsUri, i);
           statement.execute(
               String.format(
-                  "COPY alloydb.%s.%s FROM '%s' (FORMAT parquet)", SqlUtils.escapeDuckDbIdentifier(alloyDbSchema), SqlUtils.escapeDuckDbIdentifier(alloyDbTableId), SqlUtils.escapeDuckDbSqlString(file)));
+                  "COPY alloydb.%s.%s FROM '%s' (FORMAT parquet)", alloyDbSchema, alloyDbTableId, file));
           System.out.println(String.format("Loaded %s to AlloyDB.", file));
         }
       }
@@ -101,6 +106,13 @@ public class GcsToAlloyDb {
       System.err.println("Error: " + e.getMessage());
       e.printStackTrace();
     } 
+  }
+
+  private static String escapeSql(String input) {
+    if (input == null) {
+      return null;
+    }
+    return input.replace("'", "''");
   }
 
   public static int countFiles(String bucketName, String prefix) {
