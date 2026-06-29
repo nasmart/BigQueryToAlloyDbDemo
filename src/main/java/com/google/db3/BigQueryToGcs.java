@@ -17,11 +17,11 @@ public class BigQueryToGcs {
 
   public static void main(String[] args) throws InterruptedException {
 
-    String datasetProjectId = System.getenv("BIGQUERY_PROJECT");
-    String datasetId = System.getenv("BIGQUERY_DATASET");
-    String tableId = System.getenv("BIGQUERY_TABLE");
-    String bucketName = System.getenv("GCS_BUCKET");
-    String prefix = System.getenv("GCS_PREFIX");
+    String datasetProjectId = Config.get("BIGQUERY_PROJECT");
+    String datasetId = Config.get("BIGQUERY_DATASET");
+    String tableId = Config.get("BIGQUERY_TABLE");
+    String bucketName = Config.get("GCS_BUCKET");
+    String prefix = Config.get("GCS_PREFIX");
     String gcsUri = String.format("gs://%s/%s", bucketName, prefix);
 
     exportDataToGCS(datasetProjectId, gcsUri, datasetId, tableId);
