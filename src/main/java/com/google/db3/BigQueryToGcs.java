@@ -17,11 +17,11 @@ public class BigQueryToGcs {
 
   public static void main(String[] args) throws InterruptedException {
 
-    String datasetProjectId = System.getenv("BIGQUERY_PROJECT");
-    String datasetId = System.getenv("BIGQUERY_DATASET");
-    String tableId = System.getenv("BIGQUERY_TABLE");
-    String bucketName = System.getenv("GCS_BUCKET");
-    String prefix = System.getenv("GCS_PREFIX");
+    String datasetProjectId = Config.get("BIGQUERY_PROJECT");
+    String datasetId = Config.get("BIGQUERY_DATASET");
+    String tableId = Config.get("BIGQUERY_TABLE");
+    String bucketName = Config.get("GCS_BUCKET");
+    String prefix = Config.get("GCS_PREFIX");
     String gcsUri = String.format("gs://%s/%s", bucketName, prefix);
 
     exportDataToGCS(datasetProjectId, gcsUri, datasetId, tableId);
@@ -42,8 +42,11 @@ public class BigQueryToGcs {
                   + "  overwrite=true,"
                   + "  compression='SNAPPY'"
                   + ") AS SELECT * "
-                  + "  FROM %s.%s.%s",
-              gcsUri, datasetProjectId, datasetId, tableId);
+                  + "  FROM `%s`.`%s`.`%s`",
+              SqlUtils.escapeBigQuerySqlString(gcsUri),
+              SqlUtils.escapeBigQueryIdentifier(datasetProjectId),
+              SqlUtils.escapeBigQueryIdentifier(datasetId),
+              SqlUtils.escapeBigQueryIdentifier(tableId));
 
       QueryJobConfiguration queryConfig = QueryJobConfiguration.newBuilder(query).build();
 

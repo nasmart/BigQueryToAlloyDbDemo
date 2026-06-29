@@ -15,20 +15,20 @@ public class GcsToAlloyDb {
 
   public static void main(String[] args) throws InterruptedException {
 
-    String bucketName = System.getenv("GCS_BUCKET");
-    String prefix = System.getenv("GCS_PREFIX");
+    String bucketName = Config.get("GCS_BUCKET");
+    String prefix = Config.get("GCS_PREFIX");
     String gcsUri = String.format("gs://%s/%s", bucketName, prefix);
 
-    String alloyDbIp = System.getenv("ALLOYDB_IP");
-    String alloyDbPortStr = System.getenv("ALLOYDB_PORT");
-    String alloyDbDatabase = System.getenv("ALLOYDB_DATABASE");
-    String alloyDbSchema = System.getenv("ALLOYDB_SCHEMA");
-    String alloyDbTableId = System.getenv("ALLOYDB_TABLE");
-    String alloyDbUser = System.getenv("ALLOYDB_USER");
-    String alloyDbPassword = System.getenv("ALLOYDB_PASSWORD");
+    String alloyDbIp = Config.get("ALLOYDB_IP");
+    String alloyDbPortStr = Config.get("ALLOYDB_PORT");
+    String alloyDbDatabase = Config.get("ALLOYDB_DATABASE");
+    String alloyDbSchema = Config.get("ALLOYDB_SCHEMA");
+    String alloyDbTableId = Config.get("ALLOYDB_TABLE");
+    String alloyDbUser = Config.get("ALLOYDB_USER");
+    String alloyDbPassword = Config.get("ALLOYDB_PASSWORD");
 
-    String gcsKeyId = System.getenv("GCS_KEY_ID");
-    String gcsSecret = System.getenv("GCS_SECRET");
+    String gcsKeyId = Config.get("GCS_KEY_ID");
+    String gcsSecret = Config.get("GCS_SECRET");
 
     int totalWorkers;
     int workerId;
@@ -92,12 +92,12 @@ public class GcsToAlloyDb {
       int totalFiles = countFiles(bucketName, prefix + "/");
 
       // Copy for Google Cloud Storage to AlloyDB
-      for (int i = 0; i < totalFiles - 1; i++) {
+      for (int i = 0; i < totalFiles; i++) {
         if (i % totalWorkers == workerId) {
           String file = String.format("%s/%012d.parquet", gcsUri, i);
           statement.execute(
               String.format(
-                  "COPY alloydb.%s.%s FROM '%s' (FORMAT parquet)", alloyDbSchema, alloyDbTableId, file));
+                  "COPY alloydb.%s.%s FROM '%s' (FORMAT parquet)", SqlUtils.escapeDuckDbIdentifier(alloyDbSchema), SqlUtils.escapeDuckDbIdentifier(alloyDbTableId), SqlUtils.escapeDuckDbSqlString(file)));
           System.out.println(String.format("Loaded %s to AlloyDB.", file));
         }
       }
@@ -106,13 +106,6 @@ public class GcsToAlloyDb {
       System.err.println("Error: " + e.getMessage());
       e.printStackTrace();
     } 
-  }
-
-  private static String escapeSql(String input) {
-    if (input == null) {
-      return null;
-    }
-    return input.replace("'", "''");
   }
 
   public static int countFiles(String bucketName, String prefix) {
