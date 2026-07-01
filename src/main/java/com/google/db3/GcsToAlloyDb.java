@@ -86,16 +86,23 @@ public class GcsToAlloyDb {
 
       String filePattern = String.format("%s/*.parquet", gcsUri);
 
-      // Copy for Google Cloud Storage to AlloyDB
-      statement.execute(
-          String.format(
-              "INSERT INTO alloydb.\"%s\".\"%s\" SELECT * EXCLUDE (filename) FROM read_parquet('%s', filename=true) WHERE try_cast(regexp_extract(filename, '([0-9]+)\\.parquet$', 1) AS INT) %% %d = %d",
-              SqlUtils.escapeDuckDbIdentifier(alloyDbSchema),
-              SqlUtils.escapeDuckDbIdentifier(alloyDbTableId),
-              SqlUtils.escapeDuckDbSqlString(filePattern),
-              totalWorkers,
-              workerId));
-      System.out.println(String.format("Loaded files matching pattern %s for worker %d to AlloyDB.", filePattern, workerId));
+      java.util.List<String> files = new java.util.ArrayList<>();
+      try (java.sql.ResultSet rs = statement.executeQuery(String.format("SELECT file FROM glob('%s') ORDER BY file", SqlUtils.escapeDuckDbSqlString(filePattern)))) {
+        while (rs.next()) {
+          files.add(rs.getString("file"));
+        }
+      }
+
+      int i = 0;
+      for (String file : files) {
+        if (i % totalWorkers == workerId) {
+          statement.execute(
+              String.format(
+                  "COPY alloydb.\"%s\".\"%s\" FROM '%s' (FORMAT parquet)", SqlUtils.escapeDuckDbIdentifier(alloyDbSchema), SqlUtils.escapeDuckDbIdentifier(alloyDbTableId), SqlUtils.escapeDuckDbSqlString(file)));
+          System.out.println(String.format("Loaded %s to AlloyDB.", file));
+        }
+        i++;
+      }
 
     } catch (SQLException e) {
       System.err.println("Error: " + e.getMessage());
