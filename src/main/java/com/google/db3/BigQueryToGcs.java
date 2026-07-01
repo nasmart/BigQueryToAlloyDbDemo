@@ -42,8 +42,11 @@ public class BigQueryToGcs {
                   + "  overwrite=true,"
                   + "  compression='SNAPPY'"
                   + ") AS SELECT * "
-                  + "  FROM %s.%s.%s",
-              gcsUri, datasetProjectId, datasetId, tableId);
+                  + "  FROM `%s`.`%s`.`%s`",
+              SqlUtils.escapeBigQuerySqlString(gcsUri),
+              SqlUtils.escapeBigQueryIdentifier(datasetProjectId),
+              SqlUtils.escapeBigQueryIdentifier(datasetId),
+              SqlUtils.escapeBigQueryIdentifier(tableId));
 
       QueryJobConfiguration queryConfig = QueryJobConfiguration.newBuilder(query).build();
 
