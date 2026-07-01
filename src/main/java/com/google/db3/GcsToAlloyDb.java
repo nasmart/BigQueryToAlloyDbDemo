@@ -70,18 +70,18 @@ public class GcsToAlloyDb {
       // Create a postgres secret
       // Note: DuckDB does not support PreparedStatements parameters for DDL statements (like CREATE SECRET).
       // We rely on explicit string escaping and concatenation to prevent SQL injection vulnerabilities.
-      String createAlloyDbSecretSql = "CREATE SECRET alloydb (TYPE postgres, HOST '" + escapeSql(alloyDbIp)
+      String createAlloyDbSecretSql = "CREATE SECRET alloydb (TYPE postgres, HOST '" + SqlUtils.escapeDuckDbSqlString(alloyDbIp)
           + "', PORT " + alloyDbPort
-          + ", DATABASE '" + escapeSql(alloyDbDatabase)
-          + "', USER '" + escapeSql(alloyDbUser)
-          + "', PASSWORD '" + escapeSql(alloyDbPassword)
+          + ", DATABASE '" + SqlUtils.escapeDuckDbSqlString(alloyDbDatabase)
+          + "', USER '" + SqlUtils.escapeDuckDbSqlString(alloyDbUser)
+          + "', PASSWORD '" + SqlUtils.escapeDuckDbSqlString(alloyDbPassword)
           + "')";
       statement.execute(createAlloyDbSecretSql);
       System.out.println("AlloyDB secret created.");
 
       // Create a Google Cloud Storage secret
       // Note: As above, PreparedStatement parameters cannot be used here due to DuckDB limitations.
-      String createGcsSecretSql = "CREATE SECRET gcs (TYPE gcs, KEY_ID '" + escapeSql(gcsKeyId) + "', SECRET '" + escapeSql(gcsSecret) + "')";
+      String createGcsSecretSql = "CREATE SECRET gcs (TYPE gcs, KEY_ID '" + SqlUtils.escapeDuckDbSqlString(gcsKeyId) + "', SECRET '" + SqlUtils.escapeDuckDbSqlString(gcsSecret) + "')";
       statement.execute(createGcsSecretSql);
       System.out.println("Google Cloud Storage secret created.");
 
@@ -97,7 +97,7 @@ public class GcsToAlloyDb {
           String file = String.format("%s/%012d.parquet", gcsUri, i);
           statement.execute(
               String.format(
-                  "COPY alloydb.%s.%s FROM '%s' (FORMAT parquet)", alloyDbSchema, alloyDbTableId, file));
+                  "COPY alloydb.\"%s\".\"%s\" FROM '%s' (FORMAT parquet)", SqlUtils.escapeDuckDbIdentifier(alloyDbSchema), SqlUtils.escapeDuckDbIdentifier(alloyDbTableId), SqlUtils.escapeDuckDbSqlString(file)));
           System.out.println(String.format("Loaded %s to AlloyDB.", file));
         }
       }
@@ -106,13 +106,6 @@ public class GcsToAlloyDb {
       System.err.println("Error: " + e.getMessage());
       e.printStackTrace();
     } 
-  }
-
-  private static String escapeSql(String input) {
-    if (input == null) {
-      return null;
-    }
-    return input.replace("'", "''");
   }
 
   public static int countFiles(String bucketName, String prefix) {
