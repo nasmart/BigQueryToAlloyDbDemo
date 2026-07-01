@@ -1,10 +1,5 @@
 package com.google.db3;
 
-import com.google.api.gax.paging.Page;
-import com.google.cloud.storage.Blob;
-import com.google.cloud.storage.Storage;
-import com.google.cloud.storage.StorageException;
-import com.google.cloud.storage.StorageOptions;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -89,48 +84,22 @@ public class GcsToAlloyDb {
       statement.execute("ATTACH '' AS alloydb (TYPE postgres, SECRET alloydb);");
       System.out.println("Connected to AlloyDB.");
 
-      int totalFiles = countFiles(bucketName, prefix + "/");
+      String filePattern = String.format("%s/*.parquet", gcsUri);
 
       // Copy for Google Cloud Storage to AlloyDB
-      for (int i = 0; i < totalFiles; i++) {
-        if (i % totalWorkers == workerId) {
-          String file = String.format("%s/%012d.parquet", gcsUri, i);
-          statement.execute(
-              String.format(
-                  "COPY alloydb.\"%s\".\"%s\" FROM '%s' (FORMAT parquet)", SqlUtils.escapeDuckDbIdentifier(alloyDbSchema), SqlUtils.escapeDuckDbIdentifier(alloyDbTableId), SqlUtils.escapeDuckDbSqlString(file)));
-          System.out.println(String.format("Loaded %s to AlloyDB.", file));
-        }
-      }
+      statement.execute(
+          String.format(
+              "INSERT INTO alloydb.\"%s\".\"%s\" SELECT * EXCLUDE (filename) FROM read_parquet('%s', filename=true) WHERE try_cast(regexp_extract(filename, '([0-9]+)\\.parquet$', 1) AS INT) %% %d = %d",
+              SqlUtils.escapeDuckDbIdentifier(alloyDbSchema),
+              SqlUtils.escapeDuckDbIdentifier(alloyDbTableId),
+              SqlUtils.escapeDuckDbSqlString(filePattern),
+              totalWorkers,
+              workerId));
+      System.out.println(String.format("Loaded files matching pattern %s for worker %d to AlloyDB.", filePattern, workerId));
 
     } catch (SQLException e) {
       System.err.println("Error: " + e.getMessage());
       e.printStackTrace();
     } 
-  }
-
-  public static int countFiles(String bucketName, String prefix) {
-    Storage storage = StorageOptions.getDefaultInstance().getService();
-    int fileCount = 0;
-
-    try {
-
-      Page<Blob> blobs = storage.list(
-          bucketName,
-          Storage.BlobListOption.prefix(prefix),
-          Storage.BlobListOption.currentDirectory());
-
-      for (Blob blob : blobs.iterateAll()) {
-        if (!blob.isDirectory()) {
-          fileCount++;
-        }
-      }
-    } catch (StorageException e) {
-      System.err.println("Error counting files: " + e.getMessage());
-      return -1;
-    }
-
-    System.out.println("Found " + fileCount + " files in " + bucketName + "/" + prefix);
-
-    return fileCount;
   }
 }
